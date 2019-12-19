@@ -169,6 +169,13 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
         val start = layoutState.available
         var remainingSpace = layoutState.available
 
+        if (layoutState.scrollOffset != INVALID_INT) {
+            if (layoutState.available < 0) {
+                layoutState.scrollOffset += layoutState.available
+            }
+            recycleByLayoutState(recycler, layoutState)
+        }
+
         while (remainingSpace > 0 && layoutState.hasMore(state)) {
             val result = layoutChunk(recycler, layoutState)
             layoutState.offset += result.consumed * if (layoutState.layoutDirection == LayoutDirection.ToStart) {
