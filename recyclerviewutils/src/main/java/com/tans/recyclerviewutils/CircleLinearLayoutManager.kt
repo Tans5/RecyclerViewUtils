@@ -1,5 +1,6 @@
 package com.tans.recyclerviewutils
 
+import android.graphics.PointF
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.OrientationHelper
@@ -14,7 +15,8 @@ import kotlin.math.max
  */
 
 class CircleLinearLayoutManager(val circleView: Boolean = false,
-                                val orientation: Int = RecyclerView.VERTICAL) : RecyclerView.LayoutManager() {
+                                val orientation: Int = RecyclerView.VERTICAL)
+    : RecyclerView.LayoutManager(), RecyclerView.SmoothScroller.ScrollVectorProvider {
 
     private val orientationHelper: OrientationHelper =
         OrientationHelper.createOrientationHelper(this, orientation)
@@ -35,6 +37,19 @@ class CircleLinearLayoutManager(val circleView: Boolean = false,
         scrollOffset = INVALID_INT,
         scrapList = emptyList()
     )
+
+    override fun computeScrollVectorForPosition(targetPosition: Int): PointF? {
+        if (childCount == 0) {
+            return null
+        }
+        val firstChildPos = getPosition(getChildAt(0)!!)
+        val direction = if (targetPosition < firstChildPos) -1 else 1
+        return if (orientation == RecyclerView.HORIZONTAL) {
+            PointF(direction.toFloat(), 0f)
+        } else {
+            PointF(0f, direction.toFloat())
+        }
+    }
 
     override fun scrollHorizontallyBy(
         dx: Int,
