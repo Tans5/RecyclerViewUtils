@@ -13,7 +13,7 @@ import kotlin.math.max
  * date: 2019-12-18
  */
 
-class VerticalLayoutManager : RecyclerView.LayoutManager() {
+class VerticalLayoutManager(val circleView: Boolean = false) : RecyclerView.LayoutManager() {
 
     private val orientationHelper: OrientationHelper =
         OrientationHelper.createOrientationHelper(this, RecyclerView.VERTICAL)
@@ -70,7 +70,7 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
 
         layoutState.isPreLayout = state.isPreLayout
 
-        layoutState.layoutDirection = when {
+        anchorInfo.layoutDirection = when {
             layoutState.lastScrollDela == INVALID_INT -> {
                 LayoutDirection.ToEnd
             }
@@ -83,18 +83,18 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
 
         }
 
-        updateAnchorByLayout(state, layoutState.layoutDirection)
+        updateAnchorByLayout(state, anchorInfo.layoutDirection)
 
         detachAndScrapAttachedViews(recycler)
 
-        if (layoutState.layoutDirection == LayoutDirection.ToStart) {
+        if (anchorInfo.layoutDirection == LayoutDirection.ToStart) {
             updateLayoutStateToStart(anchorInfo.position, anchorInfo.coordinate)
             fill(recycler, layoutState, state)
             var startOffset = layoutState.offset
             val firstElement = layoutState.currentPosition
             val extraAvailable = max(0, layoutState.available)
             updateLayoutStateToFillEnd(anchorInfo.position, anchorInfo.coordinate)
-            layoutState.currentPosition += 1
+            layoutState.nextPosition(state)
             layoutState.available += extraAvailable
             fill(recycler, layoutState, state)
             var endOffset = layoutState.offset
@@ -119,7 +119,7 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
             val lastElement = layoutState.currentPosition
             val extraAvailable = max(0, layoutState.available)
             updateLayoutStateToStart(anchorInfo.position, anchorInfo.coordinate)
-            layoutState.currentPosition -= 1
+            layoutState.nextPosition(state)
             layoutState.available += extraAvailable
             fill(recycler, layoutState, state)
             var startOffset = layoutState.offset
@@ -178,14 +178,16 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
         when (layoutDirection) {
             LayoutDirection.ToStart -> {
                 val refView = getChildClosestToStart()
-                layoutState.currentPosition = getPosition(refView!!) - 1
+                layoutState.currentPosition = getPosition(refView!!)
+                layoutState.nextPosition(state)
                 layoutState.offset = orientationHelper.getDecoratedStart(refView)
                 layoutState.scrollOffset =
                     -orientationHelper.getDecoratedStart(refView) + orientationHelper.startAfterPadding
             }
             LayoutDirection.ToEnd -> {
                 val refView = getChildClosestToEnd()
-                layoutState.currentPosition = getPosition(refView!!) + 1
+                layoutState.currentPosition = getPosition(refView!!)
+                layoutState.nextPosition(state)
                 layoutState.offset = orientationHelper.getDecoratedEnd(refView)
                 layoutState.scrollOffset =
                     orientationHelper.getDecoratedEnd(refView) - orientationHelper.endAfterPadding
@@ -295,7 +297,7 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
         }
 
         while (remainingSpace > 0 && layoutState.hasMore(state)) {
-            val result = layoutChunk(recycler, layoutState)
+            val result = layoutChunk(recycler, layoutState, state)
             layoutState.offset += result.consumed * if (layoutState.layoutDirection == LayoutDirection.ToStart) {
                 -1
             } else {
@@ -328,9 +330,10 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
 
     private fun layoutChunk(
         recycler: RecyclerView.Recycler,
-        layoutState: LayoutState
+        layoutState: LayoutState,
+        state: RecyclerView.State
     ): LayoutChunkResult {
-        val view = layoutState.next(recycler)
+        val view = layoutState.next(recycler, state)
         val params = view.layoutParams as RecyclerView.LayoutParams
         val layoutDirection = layoutState.layoutDirection
         val offset = layoutState.offset
@@ -512,27 +515,50 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
         }
 
         fun hasMore(state: RecyclerView.State): Boolean {
-            return currentPosition in 0 until state.itemCount
+            return if (circleView) {
+                state.itemCount > 0
+            } else {
+                currentPosition in 0 until state.itemCount
+            }
         }
 
-        fun next(recycler: RecyclerView.Recycler): View {
-            return nextViewFromScrapList().let {
-                if (it == null) {
-                    val v = recycler.getViewForPosition(currentPosition)
-                    currentPosition += when (layoutDirection) {
-                        LayoutDirection.ToStart -> {
-                            -1
-                        }
+        fun next(recycler: RecyclerView.Recycler, state: RecyclerView.State): View {
+//            return nextViewFromScrapList().let {
+//                if (it == null) {
+//                    val v = recycler.getViewForPosition(currentPosition)
+//                    currentPosition += when (layoutDirection) {
+//                        LayoutDirection.ToStart -> {
+//                            -1
+//                        }
+//
+//                        LayoutDirection.ToEnd -> {
+//                            1
+//                        }
+//                    }
+//                    v
+//                } else {
+//                    it
+//                }
+//            }
+            val v = recycler.getViewForPosition(currentPosition)
 
-                        LayoutDirection.ToEnd -> {
-                            1
-                        }
-                    }
-                    v
-                } else {
-                    it
+            nextPosition(state)
+            return v
+        }
+
+        fun nextPosition(state: RecyclerView.State) {
+            val itemCount = state.itemCount
+            val needToFixPosition = currentPosition + when (layoutDirection) {
+                LayoutDirection.ToStart -> {
+                    -1
+                }
+
+                LayoutDirection.ToEnd -> {
+                    1
                 }
             }
+            if (itemCount <= 0) return
+            currentPosition = if (circleView) (needToFixPosition + itemCount) % itemCount else needToFixPosition
         }
 
         private fun nextViewFromScrapList(): View? {
