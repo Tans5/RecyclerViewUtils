@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.OrientationHelper
 import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.abs
+import kotlin.math.max
 
 /**
  *
@@ -14,12 +15,13 @@ import kotlin.math.abs
 
 class VerticalLayoutManager : RecyclerView.LayoutManager() {
 
-    private val orientationHelper: OrientationHelper
-            = OrientationHelper.createOrientationHelper(this, RecyclerView.VERTICAL)
+    private val orientationHelper: OrientationHelper =
+        OrientationHelper.createOrientationHelper(this, RecyclerView.VERTICAL)
 
     private val anchorInfo: AnchorInfo = AnchorInfo(
         position = INVALID_INT,
-        coordinate = INVALID_INT
+        coordinate = INVALID_INT,
+        layoutDirection = LayoutDirection.ToEnd
     )
 
     private val layoutState: LayoutState = LayoutState(
@@ -58,24 +60,91 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
     }
 
     override fun generateDefaultLayoutParams(): RecyclerView.LayoutParams {
-        return RecyclerView.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        return RecyclerView.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
     }
 
     override fun onLayoutChildren(recycler: RecyclerView.Recycler, state: RecyclerView.State) {
 
-        updateAnchorByLayout(state, LayoutDirection.ToEnd)
+        layoutState.isPreLayout = state.isPreLayout
+
+        layoutState.layoutDirection = when {
+            layoutState.lastScrollDela == INVALID_INT -> {
+                LayoutDirection.ToEnd
+            }
+            layoutState.lastScrollDela < 0 -> {
+                LayoutDirection.ToStart
+            }
+            else -> {
+                LayoutDirection.ToEnd
+            }
+
+        }
+
+        updateAnchorByLayout(state, layoutState.layoutDirection)
 
         detachAndScrapAttachedViews(recycler)
 
-        layoutState.isPreLayout = state.isPreLayout
+        if (layoutState.layoutDirection == LayoutDirection.ToStart) {
+            updateLayoutStateToStart(anchorInfo.position, anchorInfo.coordinate)
+            fill(recycler, layoutState, state)
+            var startOffset = layoutState.offset
+            val firstElement = layoutState.currentPosition
+            val extraAvailable = max(0, layoutState.available)
+            updateLayoutStateToFillEnd(anchorInfo.position, anchorInfo.coordinate)
+            layoutState.currentPosition += 1
+            layoutState.available += extraAvailable
+            fill(recycler, layoutState, state)
+            var endOffset = layoutState.offset
+            if (layoutState.available > 0) {
+                val endAvailable = layoutState.available
+                updateLayoutStateToStart(startOffset, firstElement)
+                layoutState.available += endAvailable
+                fill(recycler, layoutState, state)
+            }
 
-        updateLayoutStateToFillEnd(anchorInfo.position, anchorInfo.coordinate)
-        fill(recycler, layoutState, state)
-        updateLayoutStateToStart(anchorInfo.position, anchorInfo.coordinate)
-        layoutState.currentPosition -= 1
-        fill(recycler, layoutState, state)
+            val fixedStartOffset = fixLayoutStartGap(startOffset, recycler, state)
+            startOffset -= fixedStartOffset
+            endOffset -= fixedStartOffset
+            val fixedEndOffset = fixLayoutEndGap(endOffset, recycler, state)
+            startOffset += fixedEndOffset
+            endOffset += fixedEndOffset
 
-        anchorInfo.reset()
+        } else {
+            updateLayoutStateToFillEnd(anchorInfo.position, anchorInfo.coordinate)
+            fill(recycler, layoutState, state)
+            var endOffset = layoutState.offset
+            val lastElement = layoutState.currentPosition
+            val extraAvailable = max(0, layoutState.available)
+            updateLayoutStateToStart(anchorInfo.position, anchorInfo.coordinate)
+            layoutState.currentPosition -= 1
+            layoutState.available += extraAvailable
+            fill(recycler, layoutState, state)
+            var startOffset = layoutState.offset
+
+            if (layoutState.available > 0) {
+                val startAvailable = layoutState.available
+                updateLayoutStateToFillEnd(lastElement, endOffset)
+                layoutState.available += startAvailable
+                fill(recycler, layoutState, state)
+                endOffset = layoutState.offset
+            }
+
+            val fixedStartOffset = fixLayoutStartGap(startOffset, recycler, state)
+            startOffset -= fixedStartOffset
+            endOffset -= fixedStartOffset
+            val fixedEndOffset = fixLayoutEndGap(endOffset, recycler, state)
+            startOffset += fixedEndOffset
+            endOffset += fixedEndOffset
+        }
+
+        if (!state.isPreLayout) {
+            orientationHelper.onLayoutComplete()
+        } else {
+            anchorInfo.reset()
+        }
     }
 
     override fun supportsPredictiveItemAnimations(): Boolean {
@@ -100,7 +169,7 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
     }
 
     fun updateLayoutStateByScroll(scrollDelta: Int, state: RecyclerView.State) {
-        val layoutDirection= if (scrollDelta < 0) {
+        val layoutDirection = if (scrollDelta < 0) {
             LayoutDirection.ToStart
         } else {
             LayoutDirection.ToEnd
@@ -111,13 +180,15 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
                 val refView = getChildClosestToStart()
                 layoutState.currentPosition = getPosition(refView!!) - 1
                 layoutState.offset = orientationHelper.getDecoratedStart(refView)
-                layoutState.scrollOffset = -orientationHelper.getDecoratedStart(refView) + orientationHelper.startAfterPadding
+                layoutState.scrollOffset =
+                    -orientationHelper.getDecoratedStart(refView) + orientationHelper.startAfterPadding
             }
             LayoutDirection.ToEnd -> {
                 val refView = getChildClosestToEnd()
                 layoutState.currentPosition = getPosition(refView!!) + 1
                 layoutState.offset = orientationHelper.getDecoratedEnd(refView)
-                layoutState.scrollOffset = orientationHelper.getDecoratedEnd(refView) - orientationHelper.endAfterPadding
+                layoutState.scrollOffset =
+                    orientationHelper.getDecoratedEnd(refView) - orientationHelper.endAfterPadding
             }
         }
         layoutState.available = abs(scrollDelta) - layoutState.scrollOffset
@@ -130,7 +201,8 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
         for (i in 0 until childCount) {
             val child = getChildAt(i)
             if (orientationHelper.getDecoratedEnd(child) > offset
-                || orientationHelper.getTransformedEndWithDecoration(child) > offset) {
+                || orientationHelper.getTransformedEndWithDecoration(child) > offset
+            ) {
                 recycleChildren(recycler, 0, i)
                 return
             }
@@ -142,11 +214,55 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
         for (i in childCount - 1 downTo 0) {
             val child = getChildAt(i)
             if (orientationHelper.getDecoratedStart(child) < limit
-                || orientationHelper.getTransformedStartWithDecoration(child) < limit) {
+                || orientationHelper.getTransformedStartWithDecoration(child) < limit
+            ) {
                 recycleChildren(recycler, childCount - 1, i)
                 return
             }
         }
+    }
+
+    private fun fixLayoutStartGap(
+        startOffset: Int,
+        recycler: RecyclerView.Recycler,
+        state: RecyclerView.State
+    ): Int {
+        val gap = startOffset - orientationHelper.startAfterPadding
+        var fixedOffset = 0
+        if (gap > 0) {
+            fixedOffset = scrollBy(gap, recycler, state)
+        } else {
+            return 0
+        }
+        val remainingStartOffset = startOffset - fixedOffset
+        val remainingGap = remainingStartOffset - orientationHelper.startAfterPadding
+        if (remainingGap > 0) {
+            orientationHelper.offsetChildren(-remainingGap)
+            return fixedOffset + remainingGap
+        }
+        return fixedOffset
+    }
+
+    private fun fixLayoutEndGap(
+        endOffset: Int,
+        recycler: RecyclerView.Recycler,
+        state: RecyclerView.State
+    ): Int {
+        val gap = orientationHelper.endAfterPadding - endOffset
+        var fixedOffset = 0
+        if (gap > 0) {
+            fixedOffset = -scrollBy(-gap, recycler, state)
+        } else {
+            return 0
+        }
+//        val remainingEndOffset = endOffset + fixedOffset
+//        val remainingGap = orientationHelper.endAfterPadding - remainingEndOffset
+//        if (remainingGap > 0) {
+//            orientationHelper.offsetChildren(remainingGap)
+//            return remainingGap + fixedOffset
+//        }
+
+        return fixedOffset
     }
 
     private fun recycleChildren(recycler: RecyclerView.Recycler, startIndex: Int, endIndex: Int) {
@@ -164,8 +280,10 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
         }
     }
 
-    private fun fill(recycler: RecyclerView.Recycler, layoutState: LayoutState,
-                     state: RecyclerView.State): Int {
+    private fun fill(
+        recycler: RecyclerView.Recycler, layoutState: LayoutState,
+        state: RecyclerView.State
+    ): Int {
         val start = layoutState.available
         var remainingSpace = layoutState.available
 
@@ -208,8 +326,10 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
         }
     }
 
-    private fun layoutChunk(recycler: RecyclerView.Recycler,
-                            layoutState: LayoutState): LayoutChunkResult {
+    private fun layoutChunk(
+        recycler: RecyclerView.Recycler,
+        layoutState: LayoutState
+    ): LayoutChunkResult {
         val view = layoutState.next(recycler)
         val params = view.layoutParams as RecyclerView.LayoutParams
         val layoutDirection = layoutState.layoutDirection
@@ -244,7 +364,10 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
 
         layoutDecoratedWithMargins(view, left, top, right, bottom)
 
-        return LayoutChunkResult(consumed = consumed, ignoreConsumed = (params.isItemChanged || params.isItemChanged))
+        return LayoutChunkResult(
+            consumed = consumed,
+            ignoreConsumed = (params.isItemChanged || params.isItemChanged)
+        )
     }
 
     private fun updateLayoutStateToFillEnd(itemPosition: Int, offset: Int) {
@@ -291,7 +414,7 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
     }
 
     private fun getChildClosestToStart(): View? {
-        return getChildAt( 0)
+        return getChildAt(0)
     }
 
     private fun getChildClosestToEnd(): View? {
@@ -340,9 +463,11 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
     }
 
 
-
-    inner class AnchorInfo(var position: Int,
-                           var coordinate: Int) {
+    inner class AnchorInfo(
+        var position: Int,
+        var coordinate: Int,
+        var layoutDirection: LayoutDirection
+    ) {
 
         fun reset() {
             position = INVALID_INT
@@ -365,14 +490,16 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
 
     enum class LayoutDirection { ToStart, ToEnd }
 
-    inner class LayoutState(var offset: Int,
-                            var available: Int,
-                            var currentPosition: Int,
-                            var layoutDirection: LayoutDirection,
-                            var isPreLayout: Boolean,
-                            var lastScrollDela: Int,
-                            var scrollOffset: Int,
-                            var scrapList: List<RecyclerView.ViewHolder>) {
+    inner class LayoutState(
+        var offset: Int,
+        var available: Int,
+        var currentPosition: Int,
+        var layoutDirection: LayoutDirection,
+        var isPreLayout: Boolean,
+        var lastScrollDela: Int,
+        var scrollOffset: Int,
+        var scrapList: List<RecyclerView.ViewHolder>
+    ) {
         fun reset() {
             offset = INVALID_INT
             available = INVALID_INT
@@ -444,7 +571,8 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
                 if (view === ignore || lp.isItemRemoved) {
                     continue
                 }
-                val distance = (lp.viewLayoutPosition - currentPosition) * if (layoutDirection == LayoutDirection.ToStart) -1 else 1
+                val distance =
+                    (lp.viewLayoutPosition - currentPosition) * if (layoutDirection == LayoutDirection.ToStart) -1 else 1
                 if (distance < 0) {
                     continue // item is not in current direction
                 }
@@ -460,8 +588,10 @@ class VerticalLayoutManager : RecyclerView.LayoutManager() {
         }
     }
 
-    inner class LayoutChunkResult(val consumed: Int = 0,
-                                  val ignoreConsumed: Boolean = false)
+    inner class LayoutChunkResult(
+        val consumed: Int = 0,
+        val ignoreConsumed: Boolean = false
+    )
 
     companion object {
         const val INVALID_INT = Int.MIN_VALUE
