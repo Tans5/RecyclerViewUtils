@@ -4,8 +4,7 @@ import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.recyclerview.widget.DefaultItemAnimator
-import androidx.recyclerview.widget.LinearLayoutManager
-import com.tans.recyclerviewutils.VerticalLayoutManager
+import com.tans.recyclerviewutils.CircleLinearLayoutManager
 import com.tans.recyclerviewutils.demo.databinding.HelloWorldItemLayoutBinding
 import com.tans.tadapter.spec.SimpleAdapterSpec
 import com.tans.tadapter.spec.toAdapter
@@ -31,7 +30,7 @@ class MainActivity : AppCompatActivity() {
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
         ).toAdapter()
-        hello_rv.layoutManager = VerticalLayoutManager()
+        hello_rv.layoutManager = CircleLinearLayoutManager()
         hello_rv.itemAnimator = DefaultItemAnimator()
         hello_rv.adapter = testAdapter
     }

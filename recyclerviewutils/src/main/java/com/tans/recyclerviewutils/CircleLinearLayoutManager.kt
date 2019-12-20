@@ -13,10 +13,11 @@ import kotlin.math.max
  * date: 2019-12-18
  */
 
-class VerticalLayoutManager(val circleView: Boolean = false) : RecyclerView.LayoutManager() {
+class CircleLinearLayoutManager(val circleView: Boolean = false,
+                                val orientation: Int = RecyclerView.VERTICAL) : RecyclerView.LayoutManager() {
 
     private val orientationHelper: OrientationHelper =
-        OrientationHelper.createOrientationHelper(this, RecyclerView.VERTICAL)
+        OrientationHelper.createOrientationHelper(this, orientation)
 
     private val anchorInfo: AnchorInfo = AnchorInfo(
         position = INVALID_INT,
@@ -37,14 +38,18 @@ class VerticalLayoutManager(val circleView: Boolean = false) : RecyclerView.Layo
 
     override fun scrollHorizontallyBy(
         dx: Int,
-        recycler: RecyclerView.Recycler?,
-        state: RecyclerView.State?
+        recycler: RecyclerView.Recycler,
+        state: RecyclerView.State
     ): Int {
-        return 0
+        return if (orientation == RecyclerView.HORIZONTAL) scrollBy(dx, recycler, state) else 0
     }
 
     override fun canScrollVertically(): Boolean {
-        return true
+        return orientation == RecyclerView.VERTICAL
+    }
+
+    override fun canScrollHorizontally(): Boolean {
+        return orientation == RecyclerView.HORIZONTAL
     }
 
     override fun scrollVerticallyBy(
@@ -52,7 +57,7 @@ class VerticalLayoutManager(val circleView: Boolean = false) : RecyclerView.Layo
         recycler: RecyclerView.Recycler,
         state: RecyclerView.State
     ): Int {
-        return scrollBy(dy, recycler, state)
+        return if (orientation == RecyclerView.VERTICAL) scrollBy(dy, recycler, state) else 0
     }
 
     override fun isAutoMeasureEnabled(): Boolean {
@@ -352,20 +357,38 @@ class VerticalLayoutManager(val circleView: Boolean = false) : RecyclerView.Layo
         }
         measureChildWithMargins(view, 0, 0)
         val consumed = orientationHelper.getDecoratedMeasurement(view)
-        val left = paddingLeft
-        val right = left + orientationHelper.getDecoratedMeasurementInOther(view)
-        val top = if (layoutDirection == LayoutDirection.ToStart) {
-            offset - consumed
-        } else {
-            offset
-        }
-        val bottom = if (layoutDirection == LayoutDirection.ToStart) {
-            offset
-        } else {
-            offset + consumed
-        }
+        if (orientation == RecyclerView.VERTICAL) {
+            val left = paddingLeft
+            val right = left + orientationHelper.getDecoratedMeasurementInOther(view)
+            val top = if (layoutDirection == LayoutDirection.ToStart) {
+                offset - consumed
+            } else {
+                offset
+            }
+            val bottom = if (layoutDirection == LayoutDirection.ToStart) {
+                offset
+            } else {
+                offset + consumed
+            }
 
-        layoutDecoratedWithMargins(view, left, top, right, bottom)
+            layoutDecoratedWithMargins(view, left, top, right, bottom)
+        } else {
+            val left = if (layoutDirection == LayoutDirection.ToStart) {
+                offset - consumed
+            } else {
+                offset
+            }
+            val right = if (layoutDirection == LayoutDirection.ToStart) {
+                offset
+            } else {
+                offset + consumed
+            }
+
+            val top = paddingTop
+            val bottom = top + orientationHelper.getDecoratedMeasurementInOther(view)
+
+            layoutDecoratedWithMargins(view, left, top, right, bottom)
+        }
 
         return LayoutChunkResult(
             consumed = consumed,
