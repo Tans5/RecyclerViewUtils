@@ -1,11 +1,12 @@
 package com.tans.recyclerviewutils.demo
 
+import android.content.Intent
 import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.recyclerview.widget.DefaultItemAnimator
 import com.tans.recyclerviewutils.CircleLinearLayoutManager
-import com.tans.recyclerviewutils.HorizontalDividerItemDecoration
+import com.tans.recyclerviewutils.MarginDividerItemDecoration
 import com.tans.recyclerviewutils.demo.databinding.HelloWorldItemLayoutBinding
 import com.tans.recyclerviewutils.ignoreLastDividerController
 import com.tans.tadapter.spec.SimpleAdapterSpec
@@ -25,6 +26,9 @@ class MainActivity : AppCompatActivity() {
             layoutId = R.layout.hello_world_item_layout,
             bindData = { position, data, binding ->
                 binding.data = data
+                binding.root.setOnClickListener {
+                    startActivity(Intent(this, GridActivity::class.java))
+                }
                 // binding.root.setBackgroundColor(if (position % 2 == 0) Color.rgb(255, 0, 0) else Color.rgb(0, 255, 0))
             },
             dataUpdater = Observable.fromArray(
@@ -37,8 +41,12 @@ class MainActivity : AppCompatActivity() {
         hello_rv.layoutManager = CircleLinearLayoutManager()
         hello_rv.itemAnimator = DefaultItemAnimator()
         hello_rv.addItemDecoration(
-            HorizontalDividerItemDecoration.Companion.Builder()
-                .divider(divider = HorizontalDividerItemDecoration.Companion.ColorDivider(color = Color.RED, size = 2))
+            MarginDividerItemDecoration.Companion.Builder()
+                .divider(divider = MarginDividerItemDecoration.Companion.ColorDivider(
+                    color = Color.RED,
+                    size = 2
+                )
+                )
                 .marginStart(40)
                 .marginEnd(20)
                 .showDividerController(ignoreLastDividerController)
