@@ -112,13 +112,14 @@ class MarginDividerItemDecoration(
 
         enum class DividerDirection { Horizontal, Vertical }
 
-        data class Builder(
-            var divider: Divider = ColorDivider(color = Color.rgb(66, 66, 66), size = 2),
-            var marginStart: Int = 0,
-            var marginEnd: Int = 0,
-            var dividerDirection: DividerDirection = DividerDirection.Horizontal,
-            var dividerController: DividerController = { _, _, _ -> true }
-        ) {
+        class Builder {
+
+            private var divider: Divider = ColorDivider(color = Color.rgb(66, 66, 66), size = 2)
+            private var marginStart: Int = 0
+            private var marginEnd: Int = 0
+            private var dividerDirection: DividerDirection = DividerDirection.Horizontal
+            private var dividerController: DividerController = { _, _, _ -> true }
+
             fun divider(divider: Divider): Builder {
                 this.divider = divider
                 return this
@@ -134,7 +135,12 @@ class MarginDividerItemDecoration(
                 return this
             }
 
-            fun showDividerController(dividerController: DividerController): Builder {
+            fun dividerDirection(dividerDirection: DividerDirection): Builder {
+                this.dividerDirection = dividerDirection
+                return this
+            }
+
+            fun dividerController(dividerController: DividerController): Builder {
                 this.dividerController = dividerController
                 return this
             }

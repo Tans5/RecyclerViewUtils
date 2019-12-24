@@ -8,7 +8,6 @@ import androidx.recyclerview.widget.DefaultItemAnimator
 import com.tans.recyclerviewutils.CircleLinearLayoutManager
 import com.tans.recyclerviewutils.MarginDividerItemDecoration
 import com.tans.recyclerviewutils.demo.databinding.HelloWorldItemLayoutBinding
-import com.tans.recyclerviewutils.ignoreLastDividerController
 import com.tans.tadapter.spec.SimpleAdapterSpec
 import com.tans.tadapter.spec.toAdapter
 import io.reactivex.Observable
@@ -38,18 +37,17 @@ class MainActivity : AppCompatActivity() {
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
         ).toAdapter()
-        hello_rv.layoutManager = CircleLinearLayoutManager()
+        hello_rv.layoutManager = CircleLinearLayoutManager(circleView = true)
         hello_rv.itemAnimator = DefaultItemAnimator()
         hello_rv.addItemDecoration(
             MarginDividerItemDecoration.Companion.Builder()
                 .divider(divider = MarginDividerItemDecoration.Companion.ColorDivider(
                     color = Color.RED,
-                    size = 2
+                    size = 4
                 )
                 )
                 .marginStart(40)
                 .marginEnd(20)
-                .showDividerController(ignoreLastDividerController)
                 .build()
         )
         hello_rv.adapter = testAdapter

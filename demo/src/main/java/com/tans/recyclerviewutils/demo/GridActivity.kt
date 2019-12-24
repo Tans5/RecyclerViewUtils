@@ -42,17 +42,30 @@ class GridActivity : AppCompatActivity() {
         grid_hello_rv.apply {
             layoutManager = GridLayoutManager(this@GridActivity, 4)
             adapter = testAdapter
-            addItemDecoration(MarginDividerItemDecoration.Companion.Builder(
-                divider = MarginDividerItemDecoration.Companion.ColorDivider(color = Color.RED, size = 4),
-                dividerDirection = MarginDividerItemDecoration.Companion.DividerDirection.Horizontal,
-                dividerController = IgnoreGridLastLineHorizontalDividerController(4)
-            ).build())
-            addItemDecoration(MarginDividerItemDecoration.Companion.Builder(
-                divider = MarginDividerItemDecoration.Companion.ColorDivider(color = Color.RED, size = 4),
-                dividerDirection = MarginDividerItemDecoration.Companion.DividerDirection.Vertical,
-                dividerController = IgnoreGridLastRowVerticalDividerController(4)
+            addItemDecoration(
+                MarginDividerItemDecoration.Companion.Builder()
+                    .divider(
+                        MarginDividerItemDecoration.Companion.ColorDivider(
+                            color = Color.RED,
+                            size = 4
+                        )
+                    )
+                    .dividerDirection(MarginDividerItemDecoration.Companion.DividerDirection.Horizontal)
+                    .dividerController(IgnoreGridLastLineHorizontalDividerController(4))
+                    .build()
             )
-                .build())
+            addItemDecoration(
+                MarginDividerItemDecoration.Companion.Builder()
+                    .divider(
+                        MarginDividerItemDecoration.Companion.ColorDivider(
+                            color = Color.RED,
+                            size = 4
+                        )
+                    )
+                    .dividerDirection(MarginDividerItemDecoration.Companion.DividerDirection.Vertical)
+                    .dividerController(IgnoreGridLastRowVerticalDividerController(4))
+                    .build()
+            )
 
         }
     }
