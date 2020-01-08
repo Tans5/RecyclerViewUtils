@@ -81,7 +81,7 @@ class MarginDividerItemDecoration(
             }
             c.clipRect(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
             c.translate(left.toFloat(), top.toFloat())
-            divider.onDraw(canvas = c, width = right - left, height = bottom - top)
+            divider.onDraw(canvas = c, width = right - left, height = bottom - top, vh = parent.getChildViewHolder(child))
             c.restore()
         }
     }
@@ -162,7 +162,7 @@ class MarginDividerItemDecoration(
             // pixel size, divider width or height.
             val size: Int
 
-            fun onDraw(canvas: Canvas, width: Int, height: Int)
+            fun onDraw(canvas: Canvas, width: Int, height: Int, vh: RecyclerView.ViewHolder)
 
         }
 
@@ -177,7 +177,7 @@ class MarginDividerItemDecoration(
                 isAntiAlias = true
             }
 
-            override fun onDraw(canvas: Canvas, width: Int, height: Int) {
+            override fun onDraw(canvas: Canvas, width: Int, height: Int, vh: RecyclerView.ViewHolder) {
                 canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
             }
         }
@@ -187,7 +187,7 @@ class MarginDividerItemDecoration(
             override val size: Int
         ) : Divider {
 
-            override fun onDraw(canvas: Canvas, width: Int, height: Int) {
+            override fun onDraw(canvas: Canvas, width: Int, height: Int, vh: RecyclerView.ViewHolder) {
                 drawable.setBounds(0, 0, width, height)
                 drawable.draw(canvas)
             }
